@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Poster: Why Detectors Fail on Unseen Generators</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+            background: #e6edf5;
+            display: flex;
+            justify-content: center;
+            padding: 2rem 1rem;
+            min-height: 100vh;
+        }
+
+        .poster {
+            max-width: 1500px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 20, 40, 0.25);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: linear-gradient(145deg, #0a2a4a 0%, #1a4a6e 100%);
+            color: #ffffff;
+            padding: 2rem 3rem 1.8rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            border-bottom: 4px solid #4f9bd5;
+        }
+
+        .header-left { display: flex; flex-direction: column; }
+
+        .header-left .univ {
+            font-size: 1rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+            color: #aac9e8;
+            margin-bottom: 0.2rem;
+        }
+
+        .header-left .title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+            max-width: 900px;
+        }
+
+        .header-left .subtitle {
+            font-size: 1.1rem;
+            color: #8cbde8;
+            margin-top: 0.3rem;
+            font-weight: 400;
+        }
+
+        .header-right {
+            text-align: right;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 0.8rem 1.6rem;
+            border-radius: 40px;
+            backdrop-filter: blur(4px);
+        }
+
+        .header-right .name { font-size: 1.3rem; font-weight: 600; }
+        .header-right .email { font-size: 0.9rem; color: #b8d4ef; margin-top: 0.1rem; }
+        .header-right .course { font-size: 0.85rem; color: #99bce0; margin-top: 0.1rem; font-weight: 500; }
+
+        /* ── Three-column layout ── */
+        .columns {
+            display: grid;
+            grid-template-columns: 1fr 1.3fr 1fr;
+            gap: 0;
+            padding: 1.8rem 2.2rem 2.2rem 2.2rem;
+            background: #f8fafc;
+        }
+
+        .col { padding: 0 1.2rem; }
+        .col + .col { border-left: 1px solid #dde5ed; }
+
+        /* ── Section styling ── */
+        .section { margin-bottom: 1.8rem; }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #0a2a4a;
+            letter-spacing: 0.3px;
+            padding-bottom: 0.3rem;
+            border-bottom: 3px solid #4f9bd5;
+            margin-bottom: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title .badge {
+            background: #1a4a6e;
+            color: #fff;
+            font-size: 0.65rem;
+            border-radius: 20px;
+            padding: 0.1rem 0.7rem;
+            font-weight: 600;
+        }
+
+        .section p, .section li { font-size: 0.92rem; line-height: 1.5; color: #1e2f3f; }
+
+        .section ul { list-style: none; padding-left: 0.2rem; }
+        .section ul li { padding: 0.2rem 0 0.2rem 1.2rem; position: relative; }
+        .section ul li::before { content: "▸"; position: absolute; left: 0; color: #1a6a9e; font-weight: 700; }
+
+        /* ── Tables ── */
+        .table-wrap { overflow-x: auto; margin: 0.5rem 0 0.2rem 0; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+        }
+
+        table th {
+            background: #eaf1f9;
+            color: #0a2a4a;
+            font-weight: 600;
+            padding: 0.4rem 0.3rem;
+            text-align: center;
+            border-bottom: 2px solid #c5d5e5;
+        }
+
+        table td {
+            padding: 0.35rem 0.3rem;
+            text-align: center;
+            border-bottom: 1px solid #eef3f8;
+        }
+
+        table tr:last-child td { border-bottom: none; }
+
+        .best { font-weight: 700; color: #0a6a3a; background: #e6f5ee; border-radius: 4px; }
+        .fail { color: #b53a3a; font-weight: 600; }
+
+        /* ── Chart container ── */
+        .chart-container {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 0.6rem 0.4rem 0.2rem 0.4rem;
+            margin: 0.6rem 0 0.4rem 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            height: 180px;
+            position: relative;
+        }
+
+        .chart-container canvas { width: 100% !important; height: 100% !important; }
+
+        /* ── Footer ── */
+        .footer {
+            background: #f0f4fa;
+            padding: 1rem 2.2rem;
+            border-top: 1px solid #d0dce8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            font-size: 0.8rem;
+            color: #1e3a5a;
+        }
+
+        .footer .refs { display: flex; flex-wrap: wrap; gap: 0.8rem 1.6rem; }
+        .footer .refs span { font-weight: 500; }
+        .footer .ack { font-style: italic; color: #4a6a8a; }
+
+        /* ── Utilities ── */
+        .highlight-box {
+            background: #eaf3fb;
+            border-left: 4px solid #1a6a9e;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            margin: 0.6rem 0;
+        }
+
+        .highlight-box strong { color: #0a2a4a; }
+
+        .text-small { font-size: 0.8rem; color: #3a5a7a; }
+
+        .metric-badge {
+            background: #1a4a6e;
+            color: #fff;
+            padding: 0.15rem 0.8rem;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .method-card {
+            background: #eaf3fb;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            border-left: 4px solid #0a6a9e;
+            margin-bottom: 0.4rem;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 1100px) {
+            .columns { grid-template-columns: 1fr 1fr; }
+            .col + .col { border-left: none; }
+            .col:nth-child(3) { grid-column: 1 / -1; border-top: 1px solid #dde5ed; padding-top: 1.2rem; }
+            .header .title { font-size: 1.8rem; }
+        }
+
+        @media (max-width: 700px) {
+            .columns { grid-template-columns: 1fr; }
+            .col + .col { border-left: none; border-top: 1px solid #dde5ed; padding-top: 1.2rem; }
+            .header { flex-direction: column; align-items: flex-start; padding: 1.5rem 1.2rem; }
+            .header-right { text-align: left; width: 100%; }
+            .poster { border-radius: 16px; }
+            .header .title { font-size: 1.5rem; }
+            .footer { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="poster">
+
+        <!-- ═══ HEADER ═══ -->
+        <header class="header">
+            <div class="header-left">
+                <div class="univ">AI-Generated Image Detection Project</div>
+                <div class="title">Why Detectors Fail on Unseen Generators</div>
+                <div class="subtitle">Ablation, Feature-Space Analysis, and a Route Towards Mixture-of-Experts Detection</div>
+            </div>
+            <div class="header-right">
+                <div class="name">Anonymous Author</div>
+                <div class="email">Machine Learning Course Project</div>
+                <div class="course">Spring 2026</div>
+            </div>
+        </header>
+
+        <!-- ═══ 3-COLUMN BODY ═══ -->
+        <div class="columns">
+
+            <!-- ─── LEFT COLUMN ─── -->
+            <div class="col">
+
+                <!-- Background -->
+                <div class="section">
+                    <div class="section-title">📌 Background & Motivation</div>
+                    <ul>
+                        <li>GANs, diffusion models, and autoregressive architectures produce increasingly <strong>photorealistic images</strong>, raising misinformation risks.</li>
+                        <li>Detectors trained on one generator typically <strong>fail on unseen generators</strong> because each model leaves distinct low-level artifacts.</li>
+                        <li><strong>Core challenge:</strong> cross-generator generalisation across fundamentally different generation families (GAN vs. diffusion).</li>
+                        <li><strong>Goal:</strong> Systematically evaluate detection strategies and propose a Mixture-of-Experts framework.</li>
+                    </ul>
+                </div>
+
+                <!-- Dataset -->
+                <div class="section">
+                    <div class="section-title">📊 Dataset & Setup</div>
+                    <table>
+                        <tr><th style="text-align:left;">Source</th><td>GenImage benchmark (shimei123/Genimage)</td></tr>
+                        <tr><th style="text-align:left;">Training</th><td>GLIDE: 4,000 real + 4,000 fake</td></tr>
+                        <tr><th style="text-align:left;">Validation</th><td>GLIDE: 1,000 real + 1,000 fake</td></tr>
+                        <tr><th style="text-align:left;">Cross-gen Test</th><td>BigGAN / ADM / VQDM: 500+500 each</td></tr>
+                        <tr><th style="text-align:left;">Image Size</th><td>224×224, ImageNet normalisation</td></tr>
+                        <tr><th style="text-align:left;">Hardware</th><td>RTX 4060 Laptop GPU (8GB), CUDA 12.6</td></tr>
+                    </table>
+                </div>
+
+                <!-- Methods -->
+                <div class="section">
+                    <div class="section-title">⚙️ Methods</div>
+                    <div class="method-card">
+                        <strong>ResNet-18</strong> <span style="font-size:0.85rem;">(11M params, ImageNet-1K)</span><br>
+                        <span style="font-size:0.82rem;">Full Fine-tuning: AdamW, lr=1e-4, 30 epochs</span>
+                    </div>
+                    <div class="method-card">
+                        <strong>ViT-Small</strong> <span style="font-size:0.85rem;">(22M params, ImageNet-21K via timm)</span><br>
+                        <span style="font-size:0.82rem;">Full Fine-tuning: same schedule</span>
+                    </div>
+                    <div class="method-card">
+                        <strong>CLIP-ViT-B/32</strong> <span style="font-size:0.85rem;">(86M, OpenAI 400M image-text)</span><br>
+                        <span style="font-size:0.82rem;">Linear Probe: frozen backbone + linear head</span>
+                    </div>
+                    <div class="method-card">
+                        <strong>CLIP-ViT KNN</strong> <span style="font-size:0.85rem;">(following Ojha et al.)</span><br>
+                        <span style="font-size:0.82rem;">Frozen features, cosine k-NN (k=1), no training</span>
+                    </div>
+                </div>
+
+                <!-- Patch Analysis -->
+                <div class="section">
+                    <div class="section-title">🔬 Patch-Level Analysis</div>
+                    <table>
+                        <thead>
+                            <tr><th>Generator</th><th>Accuracy</th><th>Consistency</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>GLIDE (in-dist)</td><td>61.5%</td><td class="best">92.4%</td></tr>
+                            <tr><td>BigGAN</td><td>54.0%</td><td>86.5%</td></tr>
+                            <tr><td>ADM</td><td>60.8%</td><td>89.6%</td></tr>
+                            <tr><td>VQDM</td><td>61.8%</td><td>89.6%</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="highlight-box" style="margin-top:0.5rem;">
+                        <strong>~90% consistency</strong> despite ~61% accuracy — errors are <em>systematic</em>, not localised.
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ─── MIDDLE COLUMN ─── -->
+            <div class="col">
+
+                <!-- Main Results Table -->
+                <div class="section">
+                    <div class="section-title">📈 Detection Accuracy (%) <span class="badge">MAIN RESULT</span></div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Backbone</th>
+                                    <th>Strategy</th>
+                                    <th>GLIDE</th>
+                                    <th>BigGAN</th>
+                                    <th>ADM</th>
+                                    <th>VQDM</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="text-align:left;font-weight:500;">ResNet-18</td>
+                                    <td>Full FT</td>
+                                    <td>98.2</td>
+                                    <td class="best"><strong>99.3</strong></td>
+                                    <td class="fail">56.2</td>
+                                    <td class="fail">53.0</td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align:left;font-weight:500;">ViT-Small</td>
+                                    <td>Full FT</td>
+                                    <td>98.7</td>
+                                    <td>97.8</td>
+                                    <td class="fail">54.9</td>
+                                    <td class="fail">52.1</td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align:left;font-weight:500;">ResNet-18</td>
+                                    <td>Linear Probe</td>
+                                    <td>92.0</td>
+                                    <td>91.9</td>
+                                    <td class="fail">59.4</td>
+                                    <td class="fail">54.7</td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align:left;font-weight:500;">CLIP-ViT</td>
+                                    <td>Linear Probe</td>
+                                    <td class="best"><strong>99.3</strong></td>
+                                    <td>98.3</td>
+                                    <td class="fail">61.3</td>
+                                    <td class="fail">55.6</td>
+                                </tr>
+                                <tr style="background:#f8fcf8;">
+                                    <td style="text-align:left;font-weight:500;">CLIP-ViT</td>
+                                    <td>KNN (k=1)</td>
+                                    <td>85.4</td>
+                                    <td>81.7</td>
+                                    <td class="best"><strong>64.9</strong></td>
+                                    <td class="best"><strong>64.7</strong></td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align:left;font-weight:500;">ResNet-18</td>
+                                    <td>Patch 3×3</td>
+                                    <td>61.5</td>
+                                    <td>54.0</td>
+                                    <td>60.8</td>
+                                    <td>61.8</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="highlight-box" style="margin-top:0.6rem;">
+                        Full FT dominates on GLIDE/BigGAN (98–99%), but <strong>all methods collapse on ADM/VQDM</strong> (52–65%). CLIP KNN achieves best cross-gen on hardest generators.
+                    </div>
+                </div>
+
+                <!-- Accuracy Chart -->
+                <div class="section">
+                    <div class="section-title">📊 Accuracy by Generator</div>
+                    <div class="chart-container" style="height:220px;">
+                        <canvas id="accChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Unsupervised Clustering -->
+                <div class="section">
+                    <div class="section-title">🧪 Unsupervised Generator Clustering <span class="badge">NEW</span></div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr><th>Feature Space</th><th>Purity</th><th>NMI</th><th>Δ Purity</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="text-align:left;">Pretrained ViT-Small</td>
+                                    <td>0.278</td>
+                                    <td>0.003</td>
+                                    <td>—</td>
+                                </tr>
+                                <tr style="background:#f8fcf8;">
+                                    <td style="text-align:left;font-weight:500;">Fine-tuned ViT-Small</td>
+                                    <td class="best"><strong>0.559</strong></td>
+                                    <td class="best"><strong>0.378</strong></td>
+                                    <td><span class="metric-badge">+101%</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="text-small" style="margin-top:0.4rem;">K-Means (k=4) on 800 images (200/generator), no generator labels used.</div>
+
+                    <div class="table-wrap" style="margin-top:0.6rem;">
+                        <table>
+                            <thead>
+                                <tr><th>Cluster</th><th>GLIDE</th><th>BigGAN</th><th>ADM</th><th>VQDM</th><th>Dominant</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>0</td><td class="best"><strong>192</strong></td><td>103</td><td>14</td><td>9</td><td>GLIDE</td></tr>
+                                <tr><td>1</td><td>0</td><td>0</td><td>75</td><td>79</td><td>Diffusion</td></tr>
+                                <tr><td>2</td><td>8</td><td class="best"><strong>97</strong></td><td>40</td><td>33</td><td>BigGAN</td></tr>
+                                <tr><td>3</td><td>0</td><td>0</td><td>71</td><td>79</td><td>Diffusion</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="highlight-box" style="margin-top:0.5rem;">
+                        Fine-tuning for detection <strong>implicitly organises features by generator family</strong> — Purity doubles from random baseline (0.25 → 0.56).
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ─── RIGHT COLUMN ─── -->
+            <div class="col">
+
+                <!-- Cross-Gen Chart -->
+                <div class="section">
+                    <div class="section-title">📉 Cross-Generator Gap</div>
+                    <div class="chart-container" style="height:200px;">
+                        <canvas id="crossGenChart"></canvas>
+                    </div>
+                    <div class="text-small">Dashed line = chance level (50%). All fine-tuned models collapse on ADM/VQDM.</div>
+                </div>
+
+                <!-- Clustering Chart -->
+                <div class="section">
+                    <div class="section-title">🔮 Clustering Purity Comparison</div>
+                    <div class="chart-container" style="height:180px;">
+                        <canvas id="clusterChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- MoE Framework -->
+                <div class="section">
+                    <div class="section-title">🧩 Mixture-of-Experts Proposal</div>
+                    <div style="display:flex;flex-direction:column;gap:0.4rem;">
+                        <div class="method-card" style="border-left-color:#2a8a5a;">
+                            <strong>GAN Expert</strong><br>
+                            <span style="font-size:0.82rem;">Fine-tuned CNN exploiting frequency-domain spectral artifacts</span>
+                        </div>
+                        <div class="method-card" style="border-left-color:#8a5a2a;">
+                            <strong>Diffusion Expert</strong><br>
+                            <span style="font-size:0.82rem;">DIRE/FIRE-style reconstruction-error detector for diffusion artifacts</span>
+                        </div>
+                        <div class="method-card" style="border-left-color:#5a2a8a;">
+                            <strong>Universal Router</strong><br>
+                            <span style="font-size:0.82rem;">Lightweight head on fine-tuned features; routes by generator family</span>
+                        </div>
+                    </div>
+                    <div class="highlight-box" style="margin-top:0.6rem;">
+                        Clustering experiment <strong>validates the routing assumption</strong>: detection features already encode generator-family structure.
+                    </div>
+                </div>
+
+                <!-- Conclusion -->
+                <div class="section">
+                    <div class="section-title">🎯 Key Takeaways</div>
+                    <ul>
+                        <li><strong>Full FT</strong> dominates in-distribution (98–99%) but collapses on unseen diffusion generators (52–56%).</li>
+                        <li><strong>CLIP KNN</strong> generalises best on hard generators (ADM 64.9%, VQDM 64.7%), supporting frozen vision-language features.</li>
+                        <li><strong>Patch analysis</strong> reveals errors are systematic, not localised — pointing to global feature mismatch.</li>
+                        <li><strong>Unsupervised clustering</strong> of fine-tuned features achieves 2× purity improvement, validating MoE routing feasibility.</li>
+                        <li><strong>Future:</strong> MoE framework with GAN expert, diffusion expert, and learned router on detection features.</li>
+                    </ul>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- ═══ FOOTER ═══ -->
+        <footer class="footer">
+            <div class="refs">
+                <span>References</span>
+                <a href="https://arxiv.org/abs/2302.10174" target="_blank">[1] Ojha et al., CVPR 2023</a>
+                <a href="https://arxiv.org/abs/2306.08571" target="_blank">[2] Zhu et al., NeurIPS 2023</a>
+                <a href="https://arxiv.org/abs/2303.09295" target="_blank">[3] Wang et al., ICCV 2023 (DIRE)</a>
+                <a href="https://arxiv.org/abs/1512.03385" target="_blank">[4] He et al., CVPR 2016</a>
+                <a href="https://arxiv.org/abs/2010.11929" target="_blank">[5] Dosovitskiy et al., ICLR 2021</a>
+                <a href="https://arxiv.org/abs/2103.00020" target="_blank">[6] Radford et al., ICML 2021</a>
+            </div>
+            <div class="ack">Code & data: github.com/ckjsuperhh/cross-gen-detection</div>
+        </footer>
+
+    </div>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- CHARTS -->
+    <!-- ══════════════════════════════════════════ -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+
+            // ─── Accuracy grouped bar chart ───
+            const accCtx = document.getElementById('accChart').getContext('2d');
+            new Chart(accCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['ResNet-18\nFull FT', 'ViT-Small\nFull FT', 'ResNet-18\nLinear Probe', 'CLIP-ViT\nLinear Probe', 'CLIP-ViT\nKNN'],
+                    datasets: [
+                        {
+                            label: 'GLIDE',
+                            data: [98.2, 98.7, 92.0, 99.3, 85.4],
+                            backgroundColor: '#2a6a9e',
+                            borderRadius: 4,
+                        },
+                        {
+                            label: 'BigGAN',
+                            data: [99.3, 97.8, 91.9, 98.3, 81.7],
+                            backgroundColor: '#4a9ad0',
+                            borderRadius: 4,
+                        },
+                        {
+                            label: 'ADM',
+                            data: [56.2, 54.9, 59.4, 61.3, 64.9],
+                            backgroundColor: '#e8a040',
+                            borderRadius: 4,
+                        },
+                        {
+                            label: 'VQDM',
+                            data: [53.0, 52.1, 54.7, 55.6, 64.7],
+                            backgroundColor: '#d05050',
+                            borderRadius: 4,
+                        },
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 10 } } },
+                    },
+                    scales: {
+                        y: {
+                            min: 40,
+                            max: 100,
+                            ticks: { callback: (v) => v + '%' },
+                            grid: { color: 'rgba(0,0,0,0.06)' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 9 } }
+                        }
+                    }
+                }
+            });
+
+            // ─── Cross-generator gap chart ───
+            const crossCtx = document.getElementById('crossGenChart').getContext('2d');
+            new Chart(crossCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['GLIDE\n(in-dist)', 'BigGAN\n(GAN)', 'ADM\n(diffusion)', 'VQDM\n(diffusion)'],
+                    datasets: [
+                        {
+                            label: 'Best Fine-tuned',
+                            data: [99.3, 99.3, 61.3, 55.6],
+                            backgroundColor: ['#2a8a5a', '#2a8a5a', '#d05050', '#d05050'],
+                            borderRadius: 6,
+                        },
+                        {
+                            label: 'CLIP KNN',
+                            data: [85.4, 81.7, 64.9, 64.7],
+                            backgroundColor: ['#6ab0e0', '#6ab0e0', '#6ab0e0', '#6ab0e0'],
+                            borderRadius: 6,
+                        },
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 10 } } },
+                        annotation: {}
+                    },
+                    scales: {
+                        y: {
+                            min: 40,
+                            max: 100,
+                            ticks: { callback: (v) => v + '%' },
+                            grid: { color: 'rgba(0,0,0,0.06)' }
+                        },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // ─── Clustering purity bar chart ───
+            const clustCtx = document.getElementById('clusterChart').getContext('2d');
+            new Chart(clustCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Pretrained\n(random baseline)', 'Pretrained\nViT-Small', 'Fine-tuned\nViT-Small'],
+                    datasets: [
+                        {
+                            label: 'Purity',
+                            data: [0.25, 0.278, 0.559],
+                            backgroundColor: ['#b0b0b0', '#e8a040', '#2a8a5a'],
+                            borderRadius: 6,
+                        },
+                        {
+                            label: 'NMI',
+                            data: [0.0, 0.003, 0.378],
+                            backgroundColor: ['#d0d0d0', '#c0c8e0', '#4a9ad0'],
+                            borderRadius: 6,
+                        },
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 10 } } },
+                    },
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 0.7,
+                            grid: { color: 'rgba(0,0,0,0.06)' }
+                        },
+                        x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                    }
+                }
+            });
+
+        });
+    </script>
+</body>
+</html>
